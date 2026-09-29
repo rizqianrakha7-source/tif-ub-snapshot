@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-slate-950">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>TIF UB Snapshot 2026 - Maba Photo App</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ub: {
+                            blue: '#0B2545',
+                            navy: '#13315C',
+                            accent: '#EEB902',
+                            gold: '#FFD700',
+                            light: '#EEF4F8',
+                            cyan: '#00F0FF'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Hide scrollbars for slick mobile look */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+        /* Smooth mobile touch scrolling */
+        .touch-scroll { -webkit-overflow-scrolling: touch; }
+
+        /* Camera mirror effect */
+        .mirror { transform: scaleX(-1); }
+
+        /* Flash shutter animation */
+        @keyframes shutterFlash {
+            0% { opacity: 0; }
+            50% { opacity: 1; background-color: white; }
+            100% { opacity: 0; }
+        }
+        .shutter-flash { animation: shutterFlash 0.35s cubic-bezier(0.1, 0.9, 0.2, 1); }
+
+        /* Custom mobile active touch highlight */
+        .touch-active:active { transform: scale(0.96); transition: transform 0.1s ease; }
+
+        /* Ensure bottom bar respects safe area on iPhone notches */
+        .pb-safe { padding-bottom: max(1rem, env(safe-area-inset-bottom)); }
+        .mb-safe { margin-bottom: max(1rem, env(safe-area-inset-bottom)); }
+    </style>
+</head>
+<body class="h-full text-slate-100 font-sans flex flex-col bg-slate-950 overflow-hidden select-none">
+
+    <!-- Top Mobile Navigation Bar -->
+    <header class="bg-ub-blue/90 backdrop-blur-md border-b border-slate-800/80 sticky top-0 z-30 shrink-0 h-14 px-4 flex items-center justify-between">
+        <div class="flex items-center space-x-2.5">
+            <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-ub-accent to-yellow-300 flex items-center justify-center text-ub-blue font-black text-sm shadow-md">
+                <i class="fa-solid fa-camera-retro"></i>
+            </div>
+            <div>
+                <h1 class="font-extrabold text-sm tracking-wide text-white flex items-center gap-1.5 leading-none">
+                    <span>TIF UB</span> <span class="text-ub-accent">SNAPSHOT</span>
+                </h1>
+                <p class="text-[10px] text-slate-400 leading-none mt-1">Maba FILKOM UB 2026</p>
+            </div>
+        </div>
+
+        <div class="flex items-center space-x-2">
+            <!-- Add Student Modal Trigger -->
+            <button id="btnOpenAddModal" class="touch-active bg-emerald-600 hover:bg-emerald-500 text-white p-2 sm:px-3 sm:py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shadow-md">
+                <i class="fa-solid fa-user-plus text-xs"></i>
+                <span class="hidden sm:inline">Tambah Student</span>
+            </button>
+            
+            <!-- Quick Camera Flip button on header for easy mobile access -->
+            <button id="btnHeaderFlipCam" class="touch-active bg-slate-800 hover:bg-slate-700 text-slate-200 p-2 rounded-xl text-xs border border-slate-700 flex items-center justify-center" title="Ganti Kamera">
+                <i class="fa-solid fa-camera-rotate text-sm text-ub-accent"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Container with Tab Switching for Mobile Viewports -->
+    <main class="flex-grow overflow-hidden relative w-full max-w-7xl mx-auto">
+        
+        <!-- ================= SECTION 1: CAMERA STUDIO VIEW ================= -->
+        <section id="viewCamera" class="tab-view active h-full flex flex-col justify-between p-3 sm:p-5 overflow-y-auto touch-scroll">
+            
+            <div class="flex-grow flex flex-col justify-center items-center w-full max-w-2xl mx-auto">
+                
+                <!-- Live Camera Frame Viewport -->
+                <div class="relative w-full aspect-[3/4] sm:aspect-video bg-black rounded-2xl overflow-hidden border border-slate-800 shadow-2xl flex items-center justify-center group">
+                    
+                    <!-- Flash Effect overlay -->
+                    <div id="flashOverlay" class="absolute inset-0 z-40 pointer-events-none opacity-0"></div>
+
+                    <!-- Video Stream Element -->
+                    <video id="cameraVideo" autoplay playsinline webkit-playsinline muted class="w-full h-full object-cover mirror"></video>
+
+                    <!-- Camera Offline / Error Placeholder -->
+                    <div id="cameraOffline" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-950 p-6 text-center space-y-3 z-20">
+                        <div id="camIconContainer" class="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 text-2xl">
+                            <i id="camStatusIcon" class="fa-solid fa-video-slash"></i>
+                        </div>
+                        <div>
+                            <p id="camStatusTitle" class="font-bold text-slate-200 text-sm">Kamera Belum Aktif</p>
+                            <p id="camStatusDesc" class="text-xs text-slate-400 mt-1 max-w-xs">Izinkan akses kamera di browser Anda untuk mengambil foto bersama Maba.</p>
+                        </div>
+                        <button id="btnStartCam" class="touch-active px-5 py-2.5 bg-ub-navy hover:bg-blue-900 text-ub-gold border border-ub-accent/40 rounded-xl font-bold text-xs shadow-lg flex items-center gap-2">
+                            <i class="fa-solid fa-video"></i>
+                            <span id="btnStartCamText">Nyalakan Kamera</span>
+                        </button>
+                    </div>
+
+                    <!-- Live Frame Overlay Preview -->
+                    <div id="liveFrameOverlay" class="absolute inset-0 pointer-events-none p-3 sm:p-4 flex flex-col justify-between hidden">
+                        <!-- Top Header Watermark -->
+                        <div class="flex justify-between items-start">
+                            <div class="bg-slate-950/80 backdrop-blur-md px-2.5 py-1 rounded-lg border border-slate-700/60 flex items-center space-x-1.5 shadow-md">
+                                <i class="fa-solid fa-graduation-cap text-ub-accent text-xs"></i>
+                                <span class="text-[10px] sm:text-xs font-bold tracking-wider text-slate-100">FILKOM UB 2026</span>
+                            </div>
+                            <div class="bg-gradient-to-r from-ub-navy to-blue-900 text-ub-accent text-[9px] font-black px-2.5 py-1 rounded-full border border-ub-accent/30 shadow-md uppercase tracking-wider">
+                                TIF SNAPSHOT
+                            </div>
+                        </div>
+
+                        <!-- Bottom Selected Student Chips Watermark -->
+                        <div class="bg-slate-950/90 backdrop-blur-md p-2.5 sm:p-3 rounded-xl border border-slate-700/80 shadow-xl max-w-full">
+                            <div class="text-[9px] uppercase font-bold text-ub-accent tracking-wider mb-1 flex items-center justify-between">
+                                <span><i class="fa-solid fa-user-tag mr-1"></i> Mahasiswa & Cluster:</span>
+                                <span id="tagCountBadge" class="text-slate-400">0 Tagged</span>
+                            </div>
+                            <div id="overlayChipsContainer" class="text-xs text-slate-200 flex flex-wrap gap-1 max-h-16 overflow-y-auto no-scrollbar">
+                                <span class="italic text-slate-500 text-[10px]">Pilih mahasiswa & cluster pada tab 'Daftar Nama'...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Camera Controls & Frame Styles -->
+                <div class="w-full mt-3 space-y-3">
+                    
+                    <!-- Frame Preset Switcher -->
+                    <div class="flex items-center justify-center gap-1.5 bg-slate-900 p-1 rounded-xl border border-slate-800">
+                        <button class="frame-opt active flex-1 py-1.5 text-[10px] sm:text-xs font-bold rounded-lg transition bg-ub-navy text-ub-gold" data-frame="classic">
+                            Classic FILKOM
+                        </button>
+                        <button class="frame-opt flex-1 py-1.5 text-[10px] sm:text-xs font-bold text-slate-400 hover:text-white transition" data-frame="gold">
+                            UB Gold
+                        </button>
+                        <button class="frame-opt flex-1 py-1.5 text-[10px] sm:text-xs font-bold text-slate-400 hover:text-white transition" data-frame="minimal">
+                            Minimalist
+                        </button>
+                    </div>
+
+                    <!-- Main Instant Shutter Control -->
+                    <div class="flex items-center justify-between gap-2 pt-1">
+                        <!-- Toggle Mirror Button -->
+                        <button id="btnToggleMirror" class="touch-active w-12 h-12 bg-slate-900 border border-slate-800 text-slate-300 rounded-2xl flex items-center justify-center text-sm shrink-0" title="Mirror View">
+                            <i class="fa-solid fa-right-left"></i>
+                        </button>
+
+                        <!-- Main Instant Shutter Button -->
+                        <button id="btnShutterInstant" class="touch-active flex-grow py-3 px-4 bg-gradient-to-r from-ub-accent via-amber-400 to-yellow-300 text-ub-blue font-extrabold text-sm rounded-2xl shadow-lg flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-camera text-base"></i>
+                            <span>AMBIL FOTO LANGSUNG</span>
+                        </button>
+                    </div>
+
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- ================= SECTION 2: STUDENTS & CLUSTER LIST VIEW ================= -->
+        <section id="viewStudents" class="tab-view hidden h-full flex flex-col p-3 sm:p-5">
+            <div class="max-w-3xl w-full mx-auto flex flex-col h-full space-y-3">
+                
+                <!-- Search & Filter Controls -->
+                <div class="space-y-2 shrink-0 bg-slate-900 p-3 rounded-2xl border border-slate-800">
+                    <div class="relative">
+                        <i class="fa-solid fa-search absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
+                        <input type="text" id="searchStudentInput" placeholder="Cari Nama, NIM, atau Cluster..." 
+                               class="w-full bg-slate-950 border border-slate-800 rounded-xl pl-9 pr-8 py-2 text-xs text-slate-200 placeholder-slate-500 focus:outline-none focus:border-ub-accent">
+                        <button id="btnClearSearch" class="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white hidden">
+                            <i class="fa-solid fa-circle-xmark text-xs"></i>
+                        </button>
+                    </div>
+
+                    <div class="flex gap-2">
+                        <!-- Cluster Filter Dropdown -->
+                        <select id="selectClusterFilter" class="flex-grow bg-slate-950 border border-slate-800 rounded-xl px-3 py-1.5 text-xs text-slate-300 focus:outline-none focus:border-ub-accent">
+                            <option value="ALL">Semua Cluster</option>
+                        </select>
+
+                        <!-- Clear All Selections -->
+                        <button id="btnUncheckAll" class="touch-active bg-slate-800 hover:bg-rose-900/50 hover:text-rose-300 text-slate-400 px-3 py-1.5 rounded-xl text-xs font-semibold transition shrink-0 flex items-center gap-1">
+                            <i class="fa-solid fa-rotate-left"></i>
+                            <span>Reset</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Info Header -->
+                <div class="flex items-center justify-between text-xs px-1 text-slate-400 shrink-0">
+                    <span>Tandai mahasiswa untuk watermark foto:</span>
+                    <span id="selectedCounterBadge" class="bg-ub-navy text-ub-gold font-bold px-2 py-0.5 rounded-full text-[10px]">0 Dipilih</span>
+                </div>
+
+                <!-- Scrollable Student List -->
+                <div id="studentsListContainer" class="flex-grow overflow-y-auto touch-scroll space-y-2 pr-1 no-scrollbar">
+                    <!-- Populated dynamically -->
+                </div>
+
+            </div>
+        </section>
+
+
+        <!-- ================= SECTION 3: GALLERY VIEW ================= -->
+        <section id="viewGallery" class="tab-view hidden h-full flex flex-col p-3 sm:p-5">
+            <div class="max-w-4xl w-full mx-auto flex flex-col h-full">
+                
+                <!-- Gallery Header Bar -->
+                <div class="flex items-center justify-between pb-3 shrink-0 border-b border-slate-800">
+                    <div>
+                        <h2 class="font-extrabold text-sm text-slate-100 flex items-center gap-2">
+                            <i class="fa-solid fa-images text-ub-accent"></i>
+                            <span>Galeri Foto Maba</span>
+                        </h2>
+                        <p class="text-[10px] text-slate-400">Tersimpan di galeri lokal browser smartphone Anda</p>
+                    </div>
+
+                    <button id="btnClearAllGallery" class="touch-active text-rose-400 bg-rose-950/40 hover:bg-rose-900/60 px-2.5 py-1.5 rounded-xl border border-rose-800/40 text-xs font-semibold flex items-center gap-1.5">
+                        <i class="fa-solid fa-trash-can"></i>
+                        <span class="hidden sm:inline">Hapus Semua</span>
+                    </button>
+                </div>
+
+                <!-- Gallery Cards Grid -->
+                <div id="galleryGridContainer" class="flex-grow overflow-y-auto touch-scroll py-3 grid grid-cols-2 sm:grid-cols-3 gap-3 no-scrollbar">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Empty Gallery State -->
+                <div id="emptyGalleryBox" class="flex-grow flex flex-col items-center justify-center text-center p-6 text-slate-500 space-y-2">
+                    <div class="w-14 h-14 rounded-2xl bg-slate-900 border border-slate-800 flex items-center justify-center text-slate-600 text-2xl">
+                        <i class="fa-solid fa-photo-film"></i>
+                    </div>
+                    <p class="font-bold text-slate-300 text-sm">Belum Ada Foto Taken</p>
+                    <p class="text-xs text-slate-500 max-w-xs">Gunakan tab Kamera untuk mengambil foto pertama Anda bersama Maba TIF UB 2026.</p>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bg-ub-blue/95 backdrop-blur-md border-t border-slate-800/80 sticky bottom-0 z-30 shrink-0 pb-safe">
+        <div class="max-w-md mx-auto grid grid-cols-3 h-14">
+            
+            <button class="nav-tab-btn active flex flex-col items-center justify-center space-y-0.5 text-ub-accent" data-target="viewCamera">
+                <i class="fa-solid fa-camera text-base"></i>
+                <span class="text-[10px] font-bold">Kamera</span>
+            </button>
+
+            <button class="nav-tab-btn flex flex-col items-center justify-center space-y-0.5 text-slate-400 hover:text-slate-200" data-target="viewStudents">
+                <div class="relative">
+                    <i class="fa-solid fa-users text-base"></i>
+                    <span id="navStudentBadge" class="absolute -top-1 -right-2 bg-ub-accent text-ub-blue text-[8px] font-black rounded-full px-1 min-w-[14px] hidden">0</span>
+                </div>
+                <span class="text-[10px] font-bold">Daftar Nama</span>
+            </button>
+
+            <button class="nav-tab-btn flex flex-col items-center justify-center space-y-0.5 text-slate-400 hover:text-slate-200" data-target="viewGallery">
+                <div class="relative">
+                    <i class="fa-solid fa-images text-base"></i>
+                    <span id="navGalleryBadge" class="absolute -top-1 -right-2 bg-ub-accent text-ub-blue text-[8px] font-black rounded-full px-1 min-w-[14px]">0</span>
+                </div>
+                <span class="text-[10px] font-bold">Galeri</span>
+            </button>
+
+        </div>
+    </nav>
+
+    <canvas id="canvasProcess" class="hidden"></canvas>
+
+    <!-- Modal 1: Add / Edit Student & Cluster -->
+    <div id="modalAddStudent" class="fixed inset-0 z-50 bg-slate-950/85 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl relative">
+            <button id="btnCloseAddModal" class="absolute top-4 right-4 text-slate-400 hover:text-white p-1.5 rounded-lg bg-slate-800">
+                <i class="fa-solid fa-xmark text-base"></i>
+            </button>
+
+            <h3 class="font-extrabold text-base text-white flex items-center gap-2">
+                <i class="fa-solid fa-user-plus text-ub-accent"></i>
+                <span>Tambah Mahasiswa Baru</span>
+            </h3>
+
+            <form id="formAddStudent" class="space-y-3 pt-1">
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Nama Lengkap</label>
+                    <input type="text" id="inputName" required placeholder="Contoh: Muhammad Budi"
+                           class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-ub-accent">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">NIM</label>
+                    <input type="text" id="inputNim" required placeholder="Contoh: 265150200111001"
+                           class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-ub-accent">
+                </div>
+
+                <div>
+                    <label class="block text-[11px] font-semibold text-slate-300 mb-1">Cluster Maba TIF</label>
+                    <input type="text" id="inputCluster" required placeholder="Contoh: Cluster 1 - Algoritma"
+                           class="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-100 placeholder-slate-500 focus:outline-none focus:border-ub-accent">
+                    <p class="text-[9px] text-slate-500 mt-1">Ketik nama cluster baru atau pilih yang sudah ada.</p>
+                </div>
+
+                <div class="pt-2 flex justify-end space-x-2">
+                    <button type="button" id="btnCancelForm" class="px-4 py-2 bg-slate-800 text-slate-300 text-xs font-semibold rounded-xl">Batal</button>
+                    <button type="submit" class="px-5 py-2 bg-ub-accent text-ub-blue text-xs font-black rounded-xl shadow-md">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal 2: Photo Lightbox & Web Share -->
+    <div id="modalLightbox" class="fixed inset-0 z-50 bg-slate-950/95 backdrop-blur-md flex items-center justify-center p-3 sm:p-5 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-2xl w-full p-4 space-y-3 shadow-2xl relative flex flex-col max-h-[92vh]">
+            
+            <div class="flex items-center justify-between pb-1 border-b border-slate-800">
+                <h3 id="modalPhotoTitle" class="font-bold text-xs text-slate-200 truncate pr-6">Detail Foto</h3>
+                <button id="btnCloseLightbox" class="text-slate-400 hover:text-white p-1 rounded-lg bg-slate-800">
+                    <i class="fa-solid fa-xmark text-base"></i>
+                </button>
+            </div>
+
+            <div class="rounded-xl overflow-hidden bg-black border border-slate-800 flex-grow flex items-center justify-center">
+                <img id="modalPhotoImage" src="" alt="Foto Snapshot" class="w-full h-auto max-h-[60vh] object-contain">
+            </div>
+
+            <p id="modalPhotoDate" class="text-[10px] text-slate-400 text-right"></p>
+
+            <div class="flex items-center justify-between gap-2 pt-1">
+                <button id="btnWebShare" class="touch-active flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-share-nodes text-ub-accent"></i>
+                    <span>Bagikan Foto</span>
+                </button>
+
+                <a id="btnDownloadFile" href="#" download="TIF_UB_Snapshot_2026.png" class="touch-active flex-1 py-2.5 bg-ub-accent hover:bg-yellow-400 text-ub-blue font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5">
+                    <i class="fa-solid fa-download"></i>
+                    <span>Simpan ke HP</span>
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        /* Default Maba Data */
+        let defaultStudents = [
+            { nim: "265150200111001", name: "Ahmad Rizky Pratama", cluster: "Cluster 1 - Algoritma" },
+            { nim: "265150200111002", name: "Anisa Rahmawati", cluster: "Cluster 1 - Algoritma" },
+            { nim: "265150200111003", name: "Bagus Setyo Nugroho", cluster: "Cluster 2 - Cyber Security" },
+            { nim: "265150200111004", name: "Citra Dewi Maharani", cluster: "Cluster 2 - Cyber Security" },
+            { nim: "265150200111005", name: "Daffa Ibnu Hafiz", cluster: "Cluster 3 - AI & Data Science" },
+            { nim: "265150200111006", name: "Eka Putri Lestari", cluster: "Cluster 3 - AI & Data Science" },
+            { nim: "265150200111007", name: "Fajar Maulana Malik", cluster: "Cluster 4 - Mobile & Web Dev" },
+            { nim: "265150200111008", name: "Gita Nur Aini", cluster: "Cluster 4 - Mobile & Web Dev" },
+            { nim: "265150200111009", name: "Hafizh Alamsyah", cluster: "Cluster 5 - Cloud Network" },
+            { nim: "265150200111010", name: "Indah Permata Sari", cluster: "Cluster 5 - Cloud Network" }
+        ];
+
+        // Core State
+        let studentsList = [];
+        let selectedNims = new Set();
+        let galleryPhotos = [];
+        let mediaStream = null;
+        let facingMode = 'user';
+        let isMirror = true;
+        let currentFrameStyle = 'classic';
+        let activePhotoForLightbox = null;
+
+        /* DOM Elements */
+        const cameraVideo = document.getElementById('cameraVideo');
+        const cameraOffline = document.getElementById('cameraOffline');
+        const btnStartCam = document.getElementById('btnStartCam');
+        const liveFrameOverlay = document.getElementById('liveFrameOverlay');
+        const overlayChipsContainer = document.getElementById('overlayChipsContainer');
+        const tagCountBadge = document.getElementById('tagCountBadge');
+
+        const btnShutterInstant = document.getElementById('btnShutterInstant');
+        const flashOverlay = document.getElementById('flashOverlay');
+        const btnToggleMirror = document.getElementById('btnToggleMirror');
+        const btnHeaderFlipCam = document.getElementById('btnHeaderFlipCam');
+
+        const studentsListContainer = document.getElementById('studentsListContainer');
+        const searchStudentInput = document.getElementById('searchStudentInput');
+        const selectClusterFilter = document.getElementById('selectClusterFilter');
+        const btnUncheckAll = document.getElementById('btnUncheckAll');
+        const btnClearSearch = document.getElementById('btnClearSearch');
+        const selectedCounterBadge = document.getElementById('selectedCounterBadge');
+
+        const galleryGridContainer = document.getElementById('galleryGridContainer');
+        const emptyGalleryBox = document.getElementById('emptyGalleryBox');
+        const btnClearAllGallery = document.getElementById('btnClearAllGallery');
+        const navGalleryBadge = document.getElementById('navGalleryBadge');
+        const navStudentBadge = document.getElementById('navStudentBadge');
+
+        const modalAddStudent = document.getElementById('modalAddStudent');
+        const btnOpenAddModal = document.getElementById('btnOpenAddModal');
+        const btnCloseAddModal = document.getElementById('btnCloseAddModal');
+        const btnCancelForm = document.getElementById('btnCancelForm');
+        const formAddStudent = document.getElementById('formAddStudent');
+
+        const modalLightbox = document.getElementById('modalLightbox');
+        const modalPhotoTitle = document.getElementById('modalPhotoTitle');
+        const modalPhotoImage = document.getElementById('modalPhotoImage');
+        const modalPhotoDate = document.getElementById('modalPhotoDate');
+        const btnCloseLightbox = document.getElementById('btnCloseLightbox');
+        const btnDownloadFile = document.getElementById('btnDownloadFile');
+        const btnWebShare = document.getElementById('btnWebShare');
+
+        const canvasProcess = document.getElementById('canvasProcess');
+
+        window.addEventListener('DOMContentLoaded', () => {
+            loadStudentsData();
+            loadGalleryData();
+            initTabNavigation();
+            initFramePresets();
+            populateClusterDropdown();
+            renderStudentsList();
+            renderGalleryGrid();
+
+            // Auto-start camera
+            startCameraStream();
+
+            // Camera Controls
+            btnStartCam.addEventListener('click', () => startCameraStream());
+            btnToggleMirror.addEventListener('click', toggleMirrorView);
+            btnHeaderFlipCam.addEventListener('click', flipCameraSensor);
+
+            // Instant Capture Button (Direct Capture)
+            btnShutterInstant.addEventListener('click', () => capturePhoto());
+
+            // Search & Filters
+            searchStudentInput.addEventListener('input', () => {
+                btnClearSearch.classList.toggle('hidden', !searchStudentInput.value);
+                renderStudentsList();
+            });
+            btnClearSearch.addEventListener('click', () => {
+                searchStudentInput.value = '';
+                btnClearSearch.classList.add('hidden');
+                renderStudentsList();
+            });
+            selectClusterFilter.addEventListener('change', renderStudentsList);
+            btnUncheckAll.addEventListener('click', () => {
+                selectedNims.clear();
+                renderStudentsList();
+                updateOverlayChips();
+            });
+
+            // Modal Add Student
+            btnOpenAddModal.addEventListener('click', () => modalAddStudent.classList.remove('hidden'));
+            btnCloseAddModal.addEventListener('click', () => modalAddStudent.classList.add('hidden'));
+            btnCancelForm.addEventListener('click', () => modalAddStudent.classList.add('hidden'));
+            formAddStudent.addEventListener('submit', handleAddStudent);
+
+            // Modal Lightbox
+            btnCloseLightbox.addEventListener('click', () => modalLightbox.classList.add('hidden'));
+            btnWebShare.addEventListener('click', handleWebShare);
+            btnClearAllGallery.addEventListener('click', clearEntireGallery);
+        });
+
+        function initTabNavigation() {
+            const tabs = document.querySelectorAll('.nav-tab-btn');
+            const views = document.querySelectorAll('.tab-view');
+
+            tabs.forEach(tab => {
+                tab.addEventListener('click', () => {
+                    const targetId = tab.dataset.target;
+
+                    tabs.forEach(t => {
+                        t.classList.remove('active', 'text-ub-accent');
+                        t.classList.add('text-slate-400');
+                    });
+                    tab.classList.add('active', 'text-ub-accent');
+                    tab.classList.remove('text-slate-400');
+
+                    views.forEach(v => {
+                        if (v.id === targetId) {
+                            v.classList.remove('hidden');
+                            v.classList.add('active');
+                        } else {
+                            v.classList.add('hidden');
+                            v.classList.remove('active');
+                        }
+                    });
+                });
+            });
+        }
+
+        function initFramePresets() {
+            const btns = document.querySelectorAll('.frame-opt');
+            btns.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    btns.forEach(b => {
+                        b.classList.remove('bg-ub-navy', 'text-ub-gold', 'active');
+                        b.classList.add('text-slate-400');
+                    });
+                    btn.classList.add('bg-ub-navy', 'text-ub-gold', 'active');
+                    btn.classList.remove('text-slate-400');
+                    currentFrameStyle = btn.dataset.frame;
+                });
+            });
+        }
+
+        function loadStudentsData() {
+            const saved = localStorage.getItem('tif_ub_maba_students');
+            if (saved) {
+                try { studentsList = JSON.parse(saved); } catch(e) { studentsList = defaultStudents; }
+            } else {
+                studentsList = defaultStudents;
+            }
+        }
+
+        function saveStudentsData() {
+            localStorage.setItem('tif_ub_maba_students', JSON.stringify(studentsList));
+        }
+
+        function populateClusterDropdown() {
+            const current = selectClusterFilter.value;
+            const clusters = Array.from(new Set(studentsList.map(s => s.cluster))).sort();
+
+            selectClusterFilter.innerHTML = '<option value="ALL">Semua Cluster</option>';
+            clusters.forEach(c => {
+                const opt = document.createElement('option');
+                opt.value = c;
+                opt.textContent = c;
+                selectClusterFilter.appendChild(opt);
+            });
+            selectClusterFilter.value = current || 'ALL';
+        }
+
+        function renderStudentsList() {
+            const query = searchStudentInput.value.toLowerCase().trim();
+            const filterCluster = selectClusterFilter.value;
+
+            const filtered = studentsList.filter(s => {
+                const matchQuery = s.name.toLowerCase().includes(query) || s.nim.includes(query) || s.cluster.toLowerCase().includes(query);
+                const matchCluster = filterCluster === 'ALL' || s.cluster === filterCluster;
+                return matchQuery && matchCluster;
+            });
+
+            studentsListContainer.innerHTML = '';
+
+            if (filtered.length === 0) {
+                studentsListContainer.innerHTML = `
+                    <div class="text-center py-10 text-slate-500 text-xs">
+                        <i class="fa-solid fa-user-slash text-2xl mb-1 text-slate-600"></i>
+                        <p>Tidak ada mahasiswa ditemukan.</p>
+                    </div>`;
+            } else {
+                filtered.forEach(s => {
+                    const isChecked = selectedNims.has(s.nim);
+                    const item = document.createElement('div');
+                    item.className = `p-3 rounded-2xl border transition cursor-pointer flex items-center justify-between touch-active ${
+                        isChecked ? 'bg-ub-navy/90 border-ub-accent text-white shadow-md' : 'bg-slate-900 border-slate-800 text-slate-300 hover:border-slate-700'
+                    }`;
+
+                    item.innerHTML = `
+                        <div class="flex items-center space-x-3 overflow-hidden">
+                            <div class="w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs shrink-0 ${
+                                isChecked ? 'bg-ub-accent text-ub-blue' : 'bg-slate-800 text-slate-400'
+                            }">
+                                ${s.name.charAt(0)}
+                            </div>
+                            <div class="truncate">
+                                <p class="text-xs font-bold leading-tight truncate">${s.name}</p>
+                                <p class="text-[10px] text-slate-400 font-mono mt-0.5">${s.nim}</p>
+                                <span class="inline-block mt-0.5 text-[9px] font-semibold px-1.5 py-0.2 rounded bg-slate-950 text-ub-gold border border-slate-800">
+                                    ${s.cluster}
+                                </span>
+                            </div>
+                        </div>
+                        <i class="fa-solid ${isChecked ? 'fa-circle-check text-ub-accent text-lg' : 'fa-circle text-slate-700 text-lg'} shrink-0 ml-2"></i>
+                    `;
+
+                    item.addEventListener('click', () => {
+                        if (selectedNims.has(s.nim)) {
+                            selectedNims.delete(s.nim);
+                        } else {
+                            selectedNims.add(s.nim);
+                        }
+                        renderStudentsList();
+                        updateOverlayChips();
+                    });
+
+                    studentsListContainer.appendChild(item);
+                });
+            }
+
+            selectedCounterBadge.textContent = `${selectedNims.size} Dipilih`;
+            navStudentBadge.textContent = selectedNims.size;
+            navStudentBadge.classList.toggle('hidden', selectedNims.size === 0);
+        }
+
+        function handleAddStudent(e) {
+            e.preventDefault();
+            const name = document.getElementById('inputName').value.trim();
+            const nim = document.getElementById('inputNim').value.trim();
+            const cluster = document.getElementById('inputCluster').value.trim();
+
+            if (!name || !nim || !cluster) return;
+
+            const existingIdx = studentsList.findIndex(s => s.nim === nim);
+            if (existingIdx >= 0) {
+                studentsList[existingIdx] = { nim, name, cluster };
+            } else {
+                studentsList.unshift({ nim, name, cluster });
+            }
+
+            saveStudentsData();
+            populateClusterDropdown();
+            renderStudentsList();
+            updateOverlayChips();
+
+            formAddStudent.reset();
+            modalAddStudent.classList.add('hidden');
+        }
+
+        function updateOverlayChips() {
+            const selectedArray = studentsList.filter(s => selectedNims.has(s.nim));
+            tagCountBadge.textContent = `${selectedArray.length} Tagged`;
+
+            if (selectedArray.length === 0) {
+                overlayChipsContainer.innerHTML = `<span class="italic text-slate-500 text-[10px]">Pilih mahasiswa & cluster pada tab 'Daftar Nama'...</span>`;
+            } else {
+                overlayChipsContainer.innerHTML = selectedArray.map(s => `
+                    <span class="bg-slate-900 text-ub-gold text-[9px] font-bold px-2 py-0.5 rounded-md border border-slate-700/80">
+                        ${s.name} <span class="text-slate-400 font-normal">(${s.cluster})</span>
+                    </span>
+                `).join(' ');
+            }
+        }
+
+        async function startCameraStream() {
+            cameraOffline.classList.remove('hidden');
+            document.getElementById('camStatusTitle').textContent = "Memuat Kamera...";
+            document.getElementById('camStatusDesc').textContent = "Mohon berikan izin jika browser meminta akses kamera.";
+            document.getElementById('camStatusIcon').className = "fa-solid fa-spinner animate-spin text-ub-accent";
+
+            if (!window.isSecureContext && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                cameraOffline.classList.remove('hidden');
+                document.getElementById('camStatusTitle').textContent = "Akses HTTPS Diperlukan";
+                document.getElementById('camStatusDesc').textContent = "Fitur kamera browser memerlukan koneksi aman (HTTPS) atau 'localhost'. Silakan buka halaman via HTTPS.";
+                document.getElementById('camStatusIcon').className = "fa-solid fa-lock text-rose-500";
+                return;
+            }
+
+            if (mediaStream) {
+                try {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                } catch(e) { console.warn("Error stopping existing tracks", e); }
+                mediaStream = null;
+            }
+
+            const getUserMediaFn = (navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+                ? (c) => navigator.mediaDevices.getUserMedia(c)
+                : (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia)
+                    ? (c) => new Promise((res, rej) => (navigator.getUserMedia || navigator.webkitGetUserMedia || navigator.mozGetUserMedia || navigator.msGetUserMedia).call(navigator, c, res, rej))
+                    : null;
+
+            if (!getUserMediaFn) {
+                cameraOffline.classList.remove('hidden');
+                document.getElementById('camStatusTitle').textContent = "Kamera Tidak Didukung";
+                document.getElementById('camStatusDesc').textContent = "Browser Anda tidak mendukung WebRTC Camera API.";
+                document.getElementById('camStatusIcon').className = "fa-solid fa-circle-exclamation text-rose-500";
+                return;
+            }
+
+            const primaryConstraints = {
+                video: {
+                    facingMode: facingMode,
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                },
+                audio: false
+            };
+
+            const fallbackConstraints = {
+                video: true,
+                audio: false
+            };
+
+            try {
+                try {
+                    mediaStream = await getUserMediaFn(primaryConstraints);
+                } catch (primaryErr) {
+                    console.warn("Primary camera constraints failed, attempting basic fallback...", primaryErr);
+                    mediaStream = await getUserMediaFn(fallbackConstraints);
+                }
+
+                if (!mediaStream) throw new Error("Stream is empty");
+
+                cameraVideo.srcObject = mediaStream;
+
+                try {
+                    await cameraVideo.play();
+                } catch (playErr) {
+                    console.warn("Autoplay blocked, user interaction required:", playErr);
+                }
+
+                cameraOffline.classList.add('hidden');
+                liveFrameOverlay.classList.remove('hidden');
+            } catch (err) {
+                console.error("Camera access error:", err);
+                cameraOffline.classList.remove('hidden');
+                liveFrameOverlay.classList.add('hidden');
+
+                document.getElementById('camStatusIcon').className = "fa-solid fa-video-slash text-rose-400";
+                if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                    document.getElementById('camStatusTitle').textContent = "Izin Kamera Ditolak";
+                    document.getElementById('camStatusDesc').textContent = "Silakan beri izin akses kamera di pengaturan browser/HP Anda, lalu tekan Coba Lagi.";
+                } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+                    document.getElementById('camStatusTitle').textContent = "Kamera Tidak Ditemukan";
+                    document.getElementById('camStatusDesc').textContent = "Perangkat kamera tidak terdeteksi pada HP/perangkat ini.";
+                } else {
+                    document.getElementById('camStatusTitle').textContent = "Gagal Mengakses Kamera";
+                    document.getElementById('camStatusDesc').textContent = err.message || "Terjadi kesalahan saat memulai stream video.";
+                }
+                document.getElementById('btnStartCamText').textContent = "Coba Lagi Kamera";
+            }
+        }
+
+        function toggleMirrorView() {
+            isMirror = !isMirror;
+            cameraVideo.classList.toggle('mirror', isMirror);
+        }
+
+        function flipCameraSensor() {
+            facingMode = (facingMode === 'user') ? 'environment' : 'user';
+            isMirror = (facingMode === 'user');
+            cameraVideo.classList.toggle('mirror', isMirror);
+            startCameraStream();
+        }
+
+        /* Instant Photo Capture Logic */
+        function capturePhoto() {
+            if (!mediaStream) {
+                alert("Mohon nyalakan kamera terlebih dahulu!");
+                return;
+            }
+
+            // Trigger shutter flash animation
+            flashOverlay.classList.add('shutter-flash');
+            setTimeout(() => flashOverlay.classList.remove('shutter-flash'), 350);
+
+            const w = cameraVideo.videoWidth || 1280;
+            const h = cameraVideo.videoHeight || 720;
+
+            canvasProcess.width = w;
+            canvasProcess.height = h;
+            const ctx = canvasProcess.getContext('2d');
+
+            ctx.save();
+            if (isMirror) {
+                ctx.translate(w, 0);
+                ctx.scale(-1, 1);
+            }
+            ctx.drawImage(cameraVideo, 0, 0, w, h);
+            ctx.restore();
+
+            drawBrandedWatermark(ctx, w, h);
+
+            const dataUrl = canvasProcess.toDataURL('image/png');
+            const selectedArray = studentsList.filter(s => selectedNims.has(s.nim));
+
+            const newPhoto = {
+                id: Date.now(),
+                dataUrl: dataUrl,
+                timestamp: new Date().toLocaleString('id-ID', { dateStyle: 'medium', timeStyle: 'short' }),
+                tagged: selectedArray.map(s => ({ name: s.name, cluster: s.cluster }))
+            };
+
+            galleryPhotos.unshift(newPhoto);
+            saveGalleryData();
+            renderGalleryGrid();
+        }
+
+        function drawBrandedWatermark(ctx, w, h) {
+            const pad = Math.round(w * 0.03);
+            const selectedArray = studentsList.filter(s => selectedNims.has(s.nim));
+
+            if (currentFrameStyle === 'classic' || currentFrameStyle === 'gold') {
+                // Header Banner Box
+                const topH = Math.round(h * 0.08);
+                ctx.fillStyle = currentFrameStyle === 'gold' ? 'rgba(11, 37, 69, 0.94)' : 'rgba(15, 23, 42, 0.90)';
+                ctx.beginPath();
+                ctx.roundRect(pad, pad, w - (pad * 2), topH, [12]);
+                ctx.fill();
+
+                if (currentFrameStyle === 'gold') {
+                    ctx.strokeStyle = '#EEB902';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = `bold ${Math.round(topH * 0.38)}px Inter, sans-serif`;
+                ctx.fillText('UNIVERSITAS BRAWIJAYA', pad + 15, pad + (topH * 0.42));
+
+                ctx.fillStyle = '#EEB902';
+                ctx.font = `bold ${Math.round(topH * 0.28)}px Inter, sans-serif`;
+                ctx.fillText('TEKNIK INFORMATIKA 2026', pad + 15, pad + (topH * 0.8));
+
+                // Bottom Tagged Panel
+                const namesCount = selectedArray.length;
+                const botH = Math.max(Math.round(h * 0.14), Math.min(Math.round(h * 0.28), 50 + (namesCount * 18)));
+
+                ctx.fillStyle = 'rgba(11, 37, 69, 0.94)';
+                ctx.beginPath();
+                ctx.roundRect(pad, h - pad - botH, w - (pad * 2), botH, [12]);
+                ctx.fill();
+
+                ctx.strokeStyle = 'rgba(238, 185, 2, 0.5)';
+                ctx.lineWidth = 1.5;
+                ctx.stroke();
+
+                ctx.fillStyle = '#EEB902';
+                ctx.font = `bold ${Math.round(h * 0.022)}px Inter, sans-serif`;
+                ctx.fillText(`MAHASISWA & CLUSTER (${namesCount}):`, pad + 15, h - pad - botH + 25);
+
+                ctx.fillStyle = '#F8FAFC';
+                ctx.font = `500 ${Math.round(h * 0.018)}px Inter, sans-serif`;
+
+                if (namesCount === 0) {
+                    ctx.fillStyle = '#94A3B8';
+                    ctx.fillText('Maba Teknik Informatika Universitas Brawijaya', pad + 15, h - pad - botH + 50);
+                } else {
+                    let lineY = h - pad - botH + 48;
+                    let lineStr = "";
+                    
+                    selectedArray.forEach((s, idx) => {
+                        const item = `${s.name} [${s.cluster}]${idx < selectedArray.length - 1 ? ' • ' : ''}`;
+                        if (ctx.measureText(lineStr + item).width > (w - (pad * 4))) {
+                            ctx.fillText(lineStr, pad + 15, lineY);
+                            lineY += 22;
+                            lineStr = item;
+                        } else {
+                            lineStr += item;
+                        }
+                    });
+                    if (lineStr) ctx.fillText(lineStr, pad + 15, lineY);
+                }
+            } else {
+                // Minimalist Banner
+                ctx.fillStyle = 'rgba(0,0,0,0.7)';
+                ctx.fillRect(0, h - 45, w, 45);
+
+                ctx.fillStyle = '#EEB902';
+                ctx.font = 'bold 14px Inter, sans-serif';
+                ctx.fillText('TIF UB 2026', 15, h - 18);
+
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = '11px Inter, sans-serif';
+                const str = selectedArray.map(s => `${s.name} (${s.cluster})`).join(', ') || 'FILKOM UB';
+                ctx.fillText(str, 120, h - 18);
+            }
+        }
+
+        /* Gallery Management */
+        function loadGalleryData() {
+            const saved = localStorage.getItem('tif_ub_maba_gallery');
+            if (saved) {
+                try { galleryPhotos = JSON.parse(saved); } catch(e) { galleryPhotos = []; }
+            }
+        }
+
+        function saveGalleryData() {
+            localStorage.setItem('tif_ub_maba_gallery', JSON.stringify(galleryPhotos));
+        }
+
+        function renderGalleryGrid() {
+            navGalleryBadge.textContent = galleryPhotos.length;
+            galleryGridContainer.innerHTML = '';
+
+            if (galleryPhotos.length === 0) {
+                emptyGalleryBox.classList.remove('hidden');
+                galleryGridContainer.classList.add('hidden');
+                return;
+            }
+
+            emptyGalleryBox.classList.add('hidden');
+            galleryGridContainer.classList.remove('hidden');
+
+            galleryPhotos.forEach(photo => {
+                const card = document.createElement('div');
+                card.className = "bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col justify-between shadow-md";
+
+                const hasTags = photo.tagged && photo.tagged.length > 0;
+                const tagChips = hasTags ? photo.tagged.map(t => `
+                    <span class="bg-slate-950 text-ub-gold text-[9px] px-1.5 py-0.5 rounded border border-slate-800 font-semibold truncate max-w-full inline-block">
+                        ${t.name}
+                    </span>
+                `).join(' ') : `<span class="text-slate-500 text-[10px]">Tanpa Tag</span>`;
+
+                card.innerHTML = `
+                    <div class="aspect-square bg-black overflow-hidden relative cursor-pointer group">
+                        <img src="${photo.dataUrl}" alt="Snapshot" class="w-full h-full object-cover">
+                        <div class="absolute inset-0 bg-slate-950/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                            <span class="bg-ub-blue/80 text-ub-gold px-2.5 py-1 rounded-lg text-[10px] font-bold"><i class="fa-solid fa-expand"></i> Buka</span>
+                        </div>
+                    </div>
+                    <div class="p-2 space-y-1">
+                        <div class="flex flex-wrap gap-1 max-h-12 overflow-hidden">
+                            ${tagChips}
+                        </div>
+                        <div class="flex items-center justify-between pt-1 border-t border-slate-800/80">
+                            <span class="text-[9px] text-slate-500">${photo.timestamp}</span>
+                            <button class="btn-del text-slate-500 hover:text-rose-400 p-1 text-xs" title="Hapus">
+                                <i class="fa-solid fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+
+                card.querySelector('.aspect-square').addEventListener('click', () => openLightbox(photo));
+                card.querySelector('.btn-del').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deletePhoto(photo.id);
+                });
+
+                galleryGridContainer.appendChild(card);
+            });
+        }
+
+        function deletePhoto(id) {
+            galleryPhotos = galleryPhotos.filter(p => p.id !== id);
+            saveGalleryData();
+            renderGalleryGrid();
+        }
+
+        function clearEntireGallery() {
+            if (galleryPhotos.length === 0) return;
+            if (confirm("Apakah Anda yakin ingin menghapus semua foto di galeri HP Anda?")) {
+                galleryPhotos = [];
+                saveGalleryData();
+                renderGalleryGrid();
+            }
+        }
+
+        /* Lightbox & Native Web Share */
+        function openLightbox(photo) {
+            activePhotoForLightbox = photo;
+            modalPhotoImage.src = photo.dataUrl;
+
+            const titleStr = photo.tagged && photo.tagged.length > 0 
+                ? photo.tagged.map(t => `${t.name} (${t.cluster})`).join(', ') 
+                : 'Foto TIF UB 2026';
+
+            modalPhotoTitle.textContent = titleStr;
+            modalPhotoDate.textContent = `Diambil: ${photo.timestamp}`;
+            btnDownloadFile.href = photo.dataUrl;
+            btnDownloadFile.download = `TIF_UB_Snapshot_${photo.id}.png`;
+
+            modalLightbox.classList.remove('hidden');
+        }
+
+        async function handleWebShare() {
+            if (!activePhotoForLightbox) return;
+
+            try {
+                const res = await fetch(activePhotoForLightbox.dataUrl);
+                const blob = await res.blob();
+                const file = new File([blob], `TIF_UB_Snapshot_${activePhotoForLightbox.id}.png`, { type: 'image/png' });
+
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({
+                        files: [file],
+                        title: 'TIF UB Snapshot 2026',
+                        text: 'Foto Maba Teknik Informatika Universitas Brawijaya 2026!'
+                    });
+                } else if (navigator.share) {
+                    await navigator.share({
+                        title: 'TIF UB Snapshot 2026',
+                        text: 'Foto Maba Teknik Informatika UB 2026'
+                    });
+                } else {
+                    alert("Fitur Web Share tidak didukung browser ini. Gunakan tombol 'Simpan ke HP' untuk mengunduh gambar.");
+                }
+            } catch (err) {
+                console.warn("Share canceled or error:", err);
+            }
+        }
+    </script>
+</body>
+</html>
